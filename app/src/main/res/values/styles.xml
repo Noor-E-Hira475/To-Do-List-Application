@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="GreenDatePickerTheme" parent="Theme.MaterialComponents.Light.Dialog">
+        <!-- Calendar header background -->
+        <item name="colorPrimary">@color/green</item>
+        <item name="colorPrimaryVariant">@color/green</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- Selected date circle color -->
+        <item name="colorAccent">@color/green</item>
+    </style>
+
+</resources>

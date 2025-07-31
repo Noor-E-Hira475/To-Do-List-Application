@@ -1,18 +1,13 @@
 package com.hkproduction.todolistapp
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
-import android.widget.SearchView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
+import androidx.appcompat.view.ActionMode
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.hkproduction.todolistapp.databinding.ActivityMainBinding
-import androidx.appcompat.view.ActionMode
 
 class MainActivity : AppCompatActivity() {
 
@@ -21,6 +16,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var todoDao: TodoDao
     private lateinit var noResultsText: TextView
 
+    // Tracks multi-selection mode (e.g., when selecting tasks to share)
     private var actionMode: ActionMode? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,36 +24,39 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setSupportActionBar(findViewById(R.id.custom_toolbar))
-        findViewById<TextView>(R.id.toolbar_title).text = getString(R.string.to_do_list)
+        setSupportActionBar(binding.includeToolbar.customToolbar)
 
-        noResultsText = binding.tvNoResult
         todoDao = TodoDao(this)
+        noResultsText = binding.tvNoResult
 
         setupRecyclerView()
-        adapter.updateTasks(todoDao.getAll())
+        adapter.refreshFrom(todoDao) // Load saved tasks initially
         setupFab()
         setupSearch()
     }
 
+    // Sets up the RecyclerView with the adapter and defines item actions
     private fun setupRecyclerView() {
         adapter = TaskAdapter(
             mutableListOf(),
             onTaskChecked = { task, _ -> todoDao.update(task) },
             onTaskDeleted = { task, _ -> showDeleteConfirmationDialog(task) },
-            onItemLongClick = { position ->
-                if (actionMode == null) {
-                    actionMode = startSupportActionMode(actionModeCallback)
-                }
-                adapter.toggleSelection(position)
-                actionMode?.title = "${adapter.getSelectedTasks().size} selected"
-            }
+            onItemLongClick = { position -> handleItemLongClick(position) }
         )
-
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
     }
 
+    // Handles long press on an item to enable selection mode
+    private fun handleItemLongClick(position: Int) {
+        if (actionMode == null) {
+            actionMode = startSupportActionMode(actionModeCallback)
+        }
+        adapter.toggleSelection(position)
+        actionMode?.updateSelectionCount(adapter.getSelectedTasks().size)
+    }
+
+    // Defines what happens during multi-selection mode (action bar actions)
     private val actionModeCallback = object : ActionMode.Callback {
         override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
             menuInflater.inflate(R.menu.main_menu, menu)
@@ -83,57 +82,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Shares the selected tasks through system share options
     private fun shareSelectedTasks() {
         val selectedTasks = adapter.getSelectedTasks()
         if (selectedTasks.isEmpty()) {
-            Toast.makeText(this, "No tasks selected", Toast.LENGTH_SHORT).show()
+            showToast("No tasks selected")
             return
         }
-        val textToShare = selectedTasks.joinToString("\n") { "${it.title} - ${it.description}" }
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, textToShare)
+        val textToShare = selectedTasks.joinToString("\n") { task ->
+            val deadlineText = task.deadline?: "No deadline"
+            "${task.title} - ${task.description} - Deadline: $deadlineText"
         }
-        startActivity(Intent.createChooser(intent, "Share tasks via"))
+        shareText(textToShare, "Share Via")
     }
 
+    // Sets up Floating Action Button to add a new task
     private fun setupFab() {
         binding.fabAdd.setOnClickListener { showAddTaskDialog() }
     }
 
+    // Handles live search in the task list
     private fun setupSearch() {
-        binding.searchBar.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?) = false
-            override fun onQueryTextChange(newText: String): Boolean {
-                adapter.filter(newText)
-                noResultsText.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
-                return true
-            }
-        })
+        binding.searchBar.onTextChanged { query ->
+            adapter.filter(query)
+            if (adapter.itemCount == 0) noResultsText.show() else noResultsText.hide()
+        }
     }
 
+    // Shows a dialog for adding a task and inserts it into the database
     private fun showAddTaskDialog() {
         AddTaskDialog(this) { newTask ->
-            val finalTask = if (newTask.deadline == 0L) {
-                newTask.copy(deadline = null)
-            } else newTask
-
-            if (todoDao.insert(finalTask) > 0) {
-                adapter.updateTasks(todoDao.getAll())
-                Toast.makeText(this, "Task added", Toast.LENGTH_SHORT).show()
+            // Directly insert task, deadline can be null/empty
+            if (todoDao.insert(newTask) > 0) {
+                adapter.refreshFrom(todoDao)
+                showToast("Task added")
             } else {
-                Toast.makeText(this, "Failed to insert task", Toast.LENGTH_SHORT).show()
+                showToast("Failed to insert task")
             }
         }.show()
     }
 
+
+    // Shows a dialog asking the user to confirm deleting a task
     private fun showDeleteConfirmationDialog(task: Task) {
         DeleteTaskDialog(this, task) {
             if (todoDao.delete(task.id) > 0) {
-                adapter.updateTasks(todoDao.getAll())
-                Toast.makeText(this, "Task deleted", Toast.LENGTH_SHORT).show()
+                adapter.refreshFrom(todoDao)
+                showToast("Task deleted")
             } else {
-                Toast.makeText(this, "Failed to delete task", Toast.LENGTH_SHORT).show()
+                showToast("Failed to delete task")
             }
         }.show()
     }
