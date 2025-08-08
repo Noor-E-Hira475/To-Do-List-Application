@@ -8,6 +8,9 @@ import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import java.text.SimpleDateFormat
+import java.util.*
+
 
 class TaskAdapter(
     private val originalList: MutableList<Task>,
@@ -54,6 +57,10 @@ class TaskAdapter(
             onTaskDeleted(task, originalIndex)
         }
 
+        val dateTextView = holder.itemView.findViewById<TextView>(R.id.textViewCreatedAt)
+        val formatter = SimpleDateFormat("dd MMM, yyyy hh:mm a", Locale.getDefault())
+        val formattedDate = formatter.format(Date(task.createdAt))
+        dateTextView.text = formattedDate
     }
 
     private var currentQuery: String = ""
