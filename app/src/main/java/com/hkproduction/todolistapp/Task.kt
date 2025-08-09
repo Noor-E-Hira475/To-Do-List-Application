@@ -5,5 +5,6 @@ data class Task(
     val title: String,
     val description: String,
     var isDone: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val deadline: Long? = null
 )

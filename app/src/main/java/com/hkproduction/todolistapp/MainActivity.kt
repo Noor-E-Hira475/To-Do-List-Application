@@ -70,7 +70,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun showAddTaskDialog() {
         AddTaskDialog(this) { newTask ->
-            val rowId = todoDao.insert(newTask)
+            val finalTask = if (newTask.deadline == 0L) {
+                newTask.copy(deadline = null)
+            } else {
+                newTask
+            }
+            val rowId = todoDao.insert(finalTask)
             if (rowId > 0) {
                 val insertedTask = todoDao.getById(rowId.toInt())
                 if (insertedTask != null) {

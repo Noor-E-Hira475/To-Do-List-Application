@@ -12,6 +12,7 @@ class TodoDao(context: Context) {
         const val COLUMN_DESCRIPTION = "description"
         const val COLUMN_IS_DONE = "isDone"
         const val COLUMN_CREATED_AT = "createdAt"
+        const val COLUMN_DEADLINE = "deadline"
 
         const val CREATE_TABLE_TODO = """
             CREATE TABLE $TABLE_TODO (
@@ -19,7 +20,8 @@ class TodoDao(context: Context) {
                 $COLUMN_TITLE TEXT NOT NULL,
                 $COLUMN_DESCRIPTION TEXT,
                 $COLUMN_IS_DONE INTEGER NOT NULL DEFAULT 0,
-                $COLUMN_CREATED_AT INTEGER NOT NULL
+                $COLUMN_CREATED_AT INTEGER NOT NULL,
+                $COLUMN_DEADLINE INTEGER
             )
         """
     }
@@ -33,6 +35,8 @@ class TodoDao(context: Context) {
             put(COLUMN_DESCRIPTION, task.description)
             put(COLUMN_IS_DONE, if (task.isDone) 1 else 0)
             put(COLUMN_CREATED_AT, task.createdAt)
+            put(COLUMN_DEADLINE, task.deadline)
+            task.deadline?.let { put(COLUMN_DEADLINE, it) }
         }
         return db.insert(TABLE_TODO, null, values)
     }
@@ -44,6 +48,11 @@ class TodoDao(context: Context) {
             put(COLUMN_DESCRIPTION, task.description)
             put(COLUMN_IS_DONE, if (task.isDone) 1 else 0)
             put(COLUMN_CREATED_AT, task.createdAt)
+            if (task.deadline != null) {
+                put(COLUMN_DEADLINE, task.deadline)
+            } else {
+                putNull(COLUMN_DEADLINE)
+            }
         }
         return db.update(
             TABLE_TODO,
@@ -80,7 +89,10 @@ class TodoDao(context: Context) {
                 title = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TITLE)),
                 description = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DESCRIPTION)),
                 isDone = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IS_DONE)) == 1,
-                createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATED_AT))
+                createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATED_AT)),
+                deadline = if (!cursor.isNull(cursor.getColumnIndexOrThrow(COLUMN_DEADLINE)))
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_DEADLINE))
+                else null
             )
         }
         cursor.close()
@@ -105,7 +117,10 @@ class TodoDao(context: Context) {
                 title = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TITLE)),
                 description = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DESCRIPTION)),
                 isDone = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IS_DONE)) == 1,
-                createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATED_AT))
+                createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CREATED_AT)),
+                deadline = if (!cursor.isNull(cursor.getColumnIndexOrThrow(COLUMN_DEADLINE)))
+                    cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_DEADLINE))
+                else null
             )
             list.add(task)
         }
